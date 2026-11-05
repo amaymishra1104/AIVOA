@@ -1,0 +1,44 @@
+[
+  {
+    "sample": "Atorvastatin Deviation PDF",
+    "chars": 4510,
+    "ingest_time": 0.16267848014831543,
+    "analyze_time": 837.5465240478516,
+    "product": "Atorvastatin calcium, crystalline API",
+    "batch": "ATV-CA-26-0142",
+    "severity": "major",
+    "whys_count": 4,
+    "fishbone_count": 6,
+    "root_causes_count": 2,
+    "capas_count": 5,
+    "gaps_count": 6
+  },
+  {
+    "sample": "Metformin Shift Note TXT",
+    "chars": 2138,
+    "ingest_time": 0.008283615112304688,
+    "analyze_time": 83.753342628479,
+    "product": "metformin hydrochloride API",
+    "batch": "MFH-26-2033",
+    "severity": "major",
+    "whys_count": 4,
+    "fishbone_count": 3,
+    "root_causes_count": 2,
+    "capas_count": 5,
+    "gaps_count": 1
+  },
+  {
+    "sample": "Omeprazole Near-Miss EML",
+    "chars": 2255,
+    "ingest_time": 0.01755809783935547,
+    "analyze_time": 71.74845790863037,
+    "product": "omeprazole sulfide intermediate",
+    "batch": "OMP-INT-26-077",
+    "severity": "major",
+    "whys_count": 4,
+    "fishbone_count": 7,
+    "root_causes_count": 2,
+    "capas_count": 5,
+    "gaps_count": 1
+  }
+]

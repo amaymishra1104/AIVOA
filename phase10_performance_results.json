@@ -1,0 +1,11 @@
+{
+  "frontend_initial_load_sec": 2.044,
+  "backend_health_latency_sec": 0.54,
+  "document_extraction_times_sec": {
+    "Atorvastatin PDF": 0.1023,
+    "Metformin TXT": 0.0,
+    "Omeprazole EML": 0.004
+  },
+  "avg_supabase_query_latency_sec": 0.635,
+  "groq_single_call_latency_sec": 0.94
+}

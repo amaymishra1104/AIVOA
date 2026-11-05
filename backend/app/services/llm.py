@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-
+import re
+import time
 from typing import TypeVar
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -74,8 +75,8 @@ def complete_structured(
                 groq_api_key=settings.groq_api_key,
                 temperature=temperature,
                 max_tokens=4096,
-                max_retries=1,
-                request_timeout=90,
+                max_retries=5,
+                request_timeout=120,
             )
             runnable = model.with_structured_output(schema, method=method)
             raw = runnable.invoke(prompt)
@@ -83,8 +84,18 @@ def complete_structured(
         except LLMNotConfigured:
             raise
         except Exception as exc:
+            err_str = str(exc)
             last_error = _redact(exc, settings.groq_api_key)
-            log.warning("structured output failed node=%s attempt=%s method=%s", node, attempt + 1, method)
+            is_rate_limit = "429" in err_str or "rate_limit" in err_str.lower() or "too many requests" in err_str.lower()
+            if is_rate_limit:
+                wait_sec = 25.0 * (attempt + 1)
+                match = re.search(r"try again in (\d+(?:\.\d+)?)s", err_str.lower())
+                if match:
+                    wait_sec = max(float(match.group(1)) + 2.0, 10.0)
+                log.warning("Rate limit on node=%s attempt=%s, waiting %.1fs before retry...", node, attempt + 1, wait_sec)
+                time.sleep(wait_sec)
+            else:
+                log.warning("structured output failed node=%s attempt=%s method=%s", node, attempt + 1, method)
             messages = [
                 SystemMessage(content=system),
                 HumanMessage(content=human),

@@ -1,0 +1,62 @@
+[
+  {
+    "test": "Health Check",
+    "passed": true,
+    "status_code": 200,
+    "details": "DB: ok, Backend: postgresql"
+  },
+  {
+    "test": "Empty Ingest Form",
+    "passed": false,
+    "status_code": 422,
+    "details": "Characters: None"
+  },
+  {
+    "test": "Analyze Text Too Short",
+    "passed": true,
+    "status_code": 422,
+    "details": "Error Code: source_too_short"
+  },
+  {
+    "test": "List Investigations with Status Filter",
+    "passed": true,
+    "status_code": 200,
+    "details": "Count: 4"
+  },
+  {
+    "test": "Get 404 on Missing Investigation",
+    "passed": true,
+    "status_code": 404,
+    "details": "Error Code: not_found"
+  },
+  {
+    "test": "Delete 404 on Missing Investigation",
+    "passed": true,
+    "status_code": 404,
+    "details": "Error Code: not_found"
+  },
+  {
+    "test": "Dashboard Stats",
+    "passed": true,
+    "status_code": 200,
+    "details": "Total Invs: 4"
+  },
+  {
+    "test": "Dashboard Cross CAPAs",
+    "passed": true,
+    "status_code": 200,
+    "details": "CAPAs Count: 4"
+  },
+  {
+    "test": "Dashboard Cross Evidence",
+    "passed": true,
+    "status_code": 200,
+    "details": "Evidence Items: 1"
+  },
+  {
+    "test": "Samples Catalog",
+    "passed": true,
+    "status_code": 200,
+    "details": "Samples Count: 3"
+  }
+]

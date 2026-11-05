@@ -15,18 +15,18 @@ from app.ai_schemas import (
 from app.services import llm as llm_service
 from app.services.graph import prompts
 
-_SOURCE_LIMIT = 18000
+_SOURCE_LIMIT = 8000
 
 
-def _source_block(source: str, kind: str = "", filename: str = "") -> str:
+def _source_block(source: str, kind: str = "", filename: str = "", limit: int = _SOURCE_LIMIT) -> str:
     header = f"Source kind: {kind or 'text'}."
     if filename:
         header += f" Filename: {filename}."
-    body = source if len(source) <= _SOURCE_LIMIT else source[:_SOURCE_LIMIT] + "\n\n[Source truncated.]"
+    body = source if len(source) <= limit else source[:limit] + "\n\n[Source truncated.]"
     return f"{header}\n\n{body}"
 
 
-def _context(payload: dict, limit: int = 12000) -> str:
+def _context(payload: dict, limit: int = 4000) -> str:
     text = json.dumps(payload, ensure_ascii=False)
     if len(text) > limit:
         return text[:limit] + "…[truncated]"
@@ -43,7 +43,7 @@ def run_extract(source: str, attempt: int, kind: str = "", filename: str = "") -
     return llm_service.complete_structured(
         ExtractedDeviation,
         prompts.EXTRACT,
-        _source_block(source, kind, filename) + extra,
+        _source_block(source, kind, filename, limit=8000) + extra,
         node="extract_fields",
         temperature=0.0,
     )
@@ -51,7 +51,7 @@ def run_extract(source: str, attempt: int, kind: str = "", filename: str = "") -
 
 def run_investigation(source: str, extraction: dict, instruction: str = "") -> InvestigationOut:
     human = (
-        f"{_source_block(source)}\n\nFacts already extracted:\n{_context(extraction)}\n\n"
+        f"{_source_block(source, limit=6000)}\n\nFacts already extracted:\n{_context(extraction, limit=3500)}\n\n"
         "Draft the 5 Whys and the fishbone from these facts and the source."
     )
     if instruction:
@@ -71,9 +71,13 @@ def run_causes(
     investigation: dict,
     instruction: str = "",
 ) -> CausesOut:
+    summary = {
+        "problem_statement": investigation.get("problem_statement", ""),
+        "whys": investigation.get("whys", []),
+        "fishbone": investigation.get("fishbone", []),
+    }
     human = (
-        f"{_source_block(source)}\n\nExtracted facts:\n{_context(extraction)}\n\n"
-        f"Investigation draft:\n{_context(investigation)}\n\n"
+        f"{_source_block(source, limit=5000)}\n\nInvestigation findings:\n{_context(summary, limit=3500)}\n\n"
         "Propose root causes and contributing factors. Cite the source in each evidence field."
     )
     if instruction:
@@ -88,9 +92,15 @@ def run_causes(
 
 
 def run_gaps(source: str, context: dict, instruction: str = "") -> GapsOut:
+    causes = context.get("causes") or {}
+    extraction = context.get("extraction") or {}
+    summary = {
+        "deviation": extraction.get("description", "")[:1000],
+        "root_causes": causes.get("root_causes", []),
+    }
     human = (
-        f"{_source_block(source)}\n\nInvestigation so far:\n{_context(context)}\n\n"
-        "List the evidence that is still missing."
+        f"{_source_block(source, limit=4000)}\n\nIdentified causes:\n{_context(summary, limit=3000)}\n\n"
+        "List the evidence gaps that are still missing or require verification."
     )
     if instruction:
         human += f"\n\nAdditional instruction from the investigator: {instruction}"
@@ -104,9 +114,17 @@ def run_gaps(source: str, context: dict, instruction: str = "") -> GapsOut:
 
 
 def run_capa(source: str, context: dict, instruction: str = "") -> CapaListOut:
+    causes = context.get("causes") or {}
+    investigation = context.get("investigation") or {}
+    extraction = context.get("extraction") or {}
+    summary = {
+        "problem_statement": investigation.get("problem_statement") or extraction.get("description", "")[:1000],
+        "root_causes": causes.get("root_causes", []),
+        "contributing_factors": causes.get("contributing_factors", []),
+    }
     human = (
-        f"{_source_block(source)}\n\nInvestigation so far:\n{_context(context)}\n\n"
-        "Recommend corrective and preventive actions."
+        f"Investigation findings:\n{_context(summary, limit=4000)}\n\n"
+        "Recommend corrective and preventive actions (CAPAs) directly addressing these root causes."
     )
     if instruction:
         human += f"\n\nAdditional instruction from the investigator: {instruction}"
