@@ -16,6 +16,7 @@ def health() -> JSONResponse:
     body = {
         "status": "ok" if database_ok else "degraded",
         "database": "ok" if database_ok else "unavailable",
+        "database_backend": "postgresql" if "postgres" in settings.database_url else "sqlite",
         "model": settings.groq_model,
         "llm_configured": settings.llm_configured,
     }

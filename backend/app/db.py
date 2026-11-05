@@ -15,9 +15,19 @@ _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None
 
 
+def normalize_url(url: str) -> str:
+    cleaned = (url or "").strip()
+    if cleaned.startswith("postgresql://"):
+        return "postgresql+psycopg://" + cleaned[len("postgresql://"):]
+    if cleaned.startswith("postgres://"):
+        return "postgresql+psycopg://" + cleaned[len("postgres://"):]
+    return cleaned
+
+
 def make_engine(url: str) -> Engine:
-    if url.startswith("sqlite"):
-        engine = create_engine(url, connect_args={"check_same_thread": False})
+    effective_url = normalize_url(url)
+    if effective_url.startswith("sqlite"):
+        engine = create_engine(effective_url, connect_args={"check_same_thread": False})
 
         @event.listens_for(engine, "connect")
         def _enable_sqlite_fk(dbapi_connection, _connection_record) -> None:  # noqa: ARG001
@@ -26,7 +36,13 @@ def make_engine(url: str) -> Engine:
             cursor.close()
 
         return engine
-    return create_engine(url, pool_pre_ping=True)
+    return create_engine(
+        effective_url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=300,
+    )
 
 
 def get_engine() -> Engine:
@@ -53,23 +69,8 @@ def reset_engine() -> None:
 
 
 def init_db() -> None:
-    try:
-        Base.metadata.create_all(get_engine())
-    except Exception as exc:
-        url = get_settings().database_url
-        if "postgres" in url:
-            import logging
-            logging.getLogger(__name__).warning(
-                "PostgreSQL is not reachable (%s). Falling back to local SQLite (rca_local.db) for demonstration.",
-                exc,
-            )
-            reset_engine()
-            global _engine, _session_factory
-            _engine = make_engine("sqlite+pysqlite:///rca_local.db")
-            _session_factory = sessionmaker(bind=_engine, autoflush=False, expire_on_commit=False)
-            Base.metadata.create_all(_engine)
-        else:
-            raise
+    engine = get_engine()
+    Base.metadata.create_all(engine)
 
 
 def ping_database() -> bool:
