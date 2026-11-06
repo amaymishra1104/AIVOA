@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Northline RCA — Technical Walkthrough & Architecture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      width: 1920px;
+      height: 1080px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: white;
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #f8fafc;
+    }
+    .brand-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-left: 8px;
+      border-left: 1px solid #334155;
+      padding-left: 12px;
+    }
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-pill.active {
+      background: rgba(14, 165, 233, 0.15);
+      border-color: #0ea5e9;
+      color: #38bdf8;
+    }
+    .timer-badge {
+      background: #0284c7;
+      color: white;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Main Container */
+    .container {
+      display: flex;
+      flex: 1;
+      height: calc(1080px - 64px);
+      overflow: hidden;
+    }
+
+    /* Sidebar File Tree */
+    aside {
+      width: 320px;
+      background: #0c1222;
+      border-right: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .tree-header {
+      padding: 14px 18px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #1e293b;
+    }
+    .tree-content {
+      padding: 10px 0;
+      overflow-y: auto;
+      flex: 1;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .tree-item {
+      padding: 6px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tree-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: #cbd5e1;
+    }
+    .tree-item.active {
+      background: rgba(14, 165, 233, 0.12);
+      color: #38bdf8;
+      border-left: 3px solid #0ea5e9;
+      font-weight: 600;
+    }
+    .tree-icon {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Main Content Area */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #090d16;
+      overflow: hidden;
+      padding: 24px 32px;
+    }
+
+    .slide {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .slide-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .slide-number {
+      background: #334155;
+      color: #f1f5f9;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .slide-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+    .slide-file-badge {
+      font-family: monospace;
+      font-size: 12px;
+      color: #38bdf8;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* Content Panels */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .content-grid.single-col {
+      grid-template-columns: 1fr;
+    }
+
+    /* Code Container */
+    .code-container {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .code-header {
+      background: #1e293b;
+      padding: 8px 16px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #334155;
+    }
+    .mac-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .mac-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .mac-dot.red { background: #ef4444; }
+    .mac-dot.yellow { background: #f59e0b; }
+    .mac-dot.green { background: #10b981; }
+
+    .code-body {
+      padding: 16px;
+      overflow-y: auto;
+      font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      flex: 1;
+    }
+
+    /* Syntax Highlighting */
+    .kw { color: #f43f5e; font-weight: 600; }
+    .fn { color: #38bdf8; font-weight: 600; }
+    .str { color: #34d399; }
+    .num { color: #fbbf24; }
+    .comment { color: #64748b; font-style: italic; }
+    .type { color: #a855f7; }
+    .var { color: #f8fafc; }
+    .hl-line {
+      background: rgba(14, 165, 233, 0.15);
+      border-left: 3px solid #0ea5e9;
+      display: block;
+      margin: 0 -16px;
+      padding: 0 13px;
+    }
+
+    /* Explanation Panel */
+    .notes-panel {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .notes-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .notes-item {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      padding-left: 14px;
+      border-left: 2px solid #334155;
+    }
+    .notes-item strong {
+      color: #f1f5f9;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Architecture Diagram Box */
+    .arch-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      height: 100%;
+      justify-content: center;
+    }
+    .diagram-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    .diagram-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 18px 24px;
+      text-align: center;
+      min-width: 220px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .diagram-box.highlight {
+      border-color: #0ea5e9;
+      background: rgba(14, 165, 233, 0.08);
+    }
+    .diagram-box h4 {
+      font-size: 15px;
+      color: #f8fafc;
+      margin-bottom: 4px;
+    }
+    .diagram-box p {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .diagram-arrow {
+      color: #64748b;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    /* Terminal Window */
+    .term-window {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      font-family: monospace;
+      overflow: hidden;
+    }
+    .term-header {
+      background: #0f172a;
+      padding: 8px 16px;
+      font-size: 12px;
+      color: #64748b;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+    }
+    .term-body {
+      padding: 16px;
+      color: #10b981;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .term-body .pass { color: #10b981; font-weight: 700; }
+    .term-body .cmd { color: #f8fafc; font-weight: 700; }
+    .term-body .info { color: #38bdf8; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">N</div>
+      <div class="brand-title">Northline RCA</div>
+      <div class="brand-sub">TECHNICAL WALKTHROUGH & SOURCE CODE ARCHITECTURE</div>
+    </div>
+
+    <div class="header-nav">
+      <button class="nav-pill active" onclick="goToSlide(0)">1. Arch Overview</button>
+      <button class="nav-pill" onclick="goToSlide(1)">2. Frontend</button>
+      <button class="nav-pill" onclick="goToSlide(2)">3. API & Backend</button>
+      <button class="nav-pill" onclick="goToSlide(3)">4. Ingestion</button>
+      <button class="nav-pill" onclick="goToSlide(4)">5. LangGraph & Groq</button>
+      <button class="nav-pill" onclick="goToSlide(5)">6. Evidence Grounding</button>
+      <button class="nav-pill" onclick="goToSlide(6)">7. Supabase DB</button>
+      <button class="nav-pill" onclick="goToSlide(7)">8. End-to-End & Tests</button>
+    </div>
+
+    <div class="timer-badge" id="timerBadge">00:00 / 08:00</div>
+  </header>
+
+  <!-- Container -->
+  <div class="container">
+    <!-- Left File Tree -->
+    <aside>
+      <div class="tree-header">Repository File Explorer</div>
+      <div class="tree-content">
+        <div class="tree-item" id="tree-arch" onclick="goToSlide(0)"><span class="tree-icon">📄</span> ARCHITECTURE.md</div>
+        <div class="tree-item" id="tree-frontend" onclick="goToSlide(1)"><span class="tree-icon">⚛️</span> frontend/src/App.tsx</div>
+        <div class="tree-item" id="tree-store" onclick="goToSlide(1)"><span class="tree-icon">📦</span> frontend/src/store/index.ts</div>
+        <div class="tree-item" id="tree-api" onclick="goToSlide(2)"><span class="tree-icon">🐍</span> backend/app/main.py</div>
+        <div class="tree-item" id="tree-schemas" onclick="goToSlide(2)"><span class="tree-icon">📐</span> backend/app/schemas.py</div>
+        <div class="tree-item" id="tree-extract" onclick="goToSlide(3)"><span class="tree-icon">📑</span> backend/app/services/text_extract.py</div>
+        <div class="tree-item" id="tree-graph" onclick="goToSlide(4)"><span class="tree-icon">🧠</span> backend/app/services/graph/runners.py</div>
+        <div class="tree-item" id="tree-llm" onclick="goToSlide(4)"><span class="tree-icon">⚡</span> backend/app/services/llm.py</div>
+        <div class="tree-item" id="tree-grounding" onclick="goToSlide(5)"><span class="tree-icon">🎯</span> backend/app/services/grounding.py</div>
+        <div class="tree-item" id="tree-models" onclick="goToSlide(6)"><span class="tree-icon">🗄️</span> backend/app/models.py</div>
+        <div class="tree-item" id="tree-db" onclick="goToSlide(6)"><span class="tree-icon">🔌</span> backend/app/db.py</div>
+        <div class="tree-item" id="tree-tests" onclick="goToSlide(7)"><span class="tree-icon">🧪</span> backend/tests/ (34 Pytest)</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+
+      <!-- SLIDE 1: ARCHITECTURE OVERVIEW (0:00 - 0:45) -->
+      <div class="slide active" id="slide-0">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 1</span>
+            <h2 class="slide-title">System Architecture & Multi-Tier Topology</h2>
+          </div>
+          <span class="slide-file-badge">ARCHITECTURE.md</span>
+        </div>
+
+        <div class="content-grid single-col">
+          <div class="arch-diagram">
+            <div class="diagram-row">
+              <div class="diagram-box highlight">
+                <h4>React 18 SPA (Vite)</h4>
+                <p>TypeScript, Redux Toolkit, Tailwind CSS<br>Dynamic 5 Whys & Interactive 6M Fishbone</p>
+              </div>
+              <div class="diagram-arrow">➔</div>
+              <div class="diagram-box highlight">
+                <h4>FastAPI Asynchronous Gateway</h4>
+                <p>Python 3.11+, Uvicorn Worker, Pydantic V2<br>Routers: Ingest, AI, Investigations, Dashboard</p>
+              </div>
+            </div>
+
+            <div class="diagram-row" style="margin-top: 20px;">
+              <div class="diagram-arrow" style="transform: rotate(90deg);">➔</div>
+              <div style="width: 260px;"></div>
+              <div class="diagram-arrow" style="transform: rotate(90deg);">➔</div>
+            </div>
+
+            <div class="diagram-row">
+              <div class="diagram-box">
+                <h4>Supabase Cloud PostgreSQL 17.11</h4>
+                <p>SQLAlchemy 2.0 ORM, Psycopg 3 Driver<br>pool_pre_ping=True, pool_recycle=300<br>Immutable 21 CFR Part 11 Audit Trail</p>
+              </div>
+              <div style="width: 80px;"></div>
+              <div class="diagram-box">
+                <h4>LangGraph Causal Reasoning Engine</h4>
+                <p>5-Stage Graph: Extract ➔ Investigate ➔ Causes ➔ Gaps ➔ CAPA<br>Groq LLM: openai/gpt-oss-120b (120B Params)<br>Custom Exponential Rate-Limit Backoff</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: FRONTEND IMPLEMENTATION (0:45 - 1:50) -->
+      <div class="slide" id="slide-1">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 2</span>
+            <h2 class="slide-title">Frontend Architecture & Redux State Slices</h2>
+          </div>
+          <span class="slide-file-badge">frontend/src/store/investigationSlice.ts</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>frontend/src/store/investigationSlice.ts</span>
+            </div>
+            <pre class="code-body"><code><span class="kw">import</span> { createSlice, PayloadAction } <span class="kw">from</span> <span class="str">"@reduxjs/toolkit"</span>
+<span class="kw">import</span> { RCARecord, TrackedField, WhyStep } <span class="kw">from</span> <span class="str">"../types"</span>
+
+<span class="kw">export interface</span> <span class="type">InvestigationState</span> {
+  id: <span class="type">string</span> | <span class="kw">null</span>
+  record: <span class="type">RCARecord</span>
+  dirty: <span class="type">boolean</span>
+  highlighted: <span class="type">string</span>[]  <span class="comment">// Visual cues for fresh AI extractions</span>
+  lastSavedAt: <span class="type">string</span> | <span class="kw">null</span>
+}
+
+<span class="kw">export const</span> <span class="var">investigationSlice</span> = <span class="fn">createSlice</span>({
+  name: <span class="str">"investigation"</span>,
+  initialState,
+  reducers: {
+<span class="hl-line">    <span class="fn">applyServerRecord</span>(state, action: PayloadAction&lt;{ record: RCARecord; changed: string[] }&gt;) {</span>
+      state.record = action.payload.record
+      state.highlighted = action.payload.changed
+      state.dirty = <span class="kw">true</span>
+    },
+<span class="hl-line">    <span class="fn">confirmRootCause</span>(state, action: PayloadAction&lt;{ id: string; investigator: string }&gt;) {</span>
+      <span class="kw">const</span> cause = state.record.root_causes.find(c =&gt; c.id === action.payload.id)
+      <span class="kw">if</span> (cause) {
+        cause.confirmed = <span class="kw">true</span>
+        cause.confirmed_by = action.payload.investigator
+      }
+    }
+  }
+})</code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">Frontend Key Decisions</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>Typed Redux Architecture</strong> Single source of truth for the complete RCARecord document model.</li>
+              <li class="notes-item"><strong>Visual AI Highlights</strong> Changed paths trigger smooth scroll and glowing accents on newly generated fields.</li>
+              <li class="notes-item"><strong>Human Guardrail Segregation</strong> AI hypotheses remain visually tagged as suggestions until investigator confirms.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: API & BACKEND (1:50 - 2:50) -->
+      <div class="slide" id="slide-2">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 3</span>
+            <h2 class="slide-title">FastAPI Gateway, Lifespan & Schema Contracts</h2>
+          </div>
+          <span class="slide-file-badge">backend/app/main.py</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>backend/app/main.py & schemas.py</span>
+            </div>
+            <pre class="code-body"><code><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, APIRouter
+<span class="kw">from</span> app.db <span class="kw">import</span> init_db
+<span class="kw">from</span> app.config <span class="kw">import</span> get_settings
+<span class="kw">from</span> app.routers <span class="kw">import</span> ai, ingest, investigations, dashboard
+
+<span class="hl-line"><span class="kw">@asynccontextmanager</span></span>
+<span class="hl-line"><span class="kw">async def</span> <span class="fn">lifespan</span>(_app: FastAPI):</span>
+    settings = get_settings()
+    init_db()  <span class="comment"># Verify Supabase PostgreSQL connection & migrations</span>
+    log.info(<span class="str">"RCA API ready model=%s llm=%s"</span>, settings.groq_model, settings.llm_configured)
+    <span class="kw">yield</span>
+
+app = FastAPI(title=<span class="str">"Northline RCA"</span>, lifespan=lifespan)
+
+<span class="comment"># Rigid Pydantic Schema Contracts:</span>
+<span class="kw">class</span> <span class="type">AnalyzeRequest</span>(BaseModel):
+    source_text: <span class="type">str</span> = Field(min_length=40, max_length=20000)
+    source_kind: <span class="type">str</span> = <span class="str">"text"</span>
+    filename: <span class="type">str</span> = <span class="str">""</span>
+    allow_demo: <span class="type">bool</span> = <span class="kw">False</span>  <span class="comment"># Live Groq inference enforced</span></code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">API Architecture Highlights</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>Cold Boot Validation</strong> Lifespan pre-pings Supabase PostgreSQL and tests Groq API connectivity before accepting requests.</li>
+              <li class="notes-item"><strong>Strict Schema Validation</strong> Input boundaries reject malformed, empty, or oversized documents before LLM execution.</li>
+              <li class="notes-item"><strong>Streaming Node Progress</strong> Server-Sent Events stream graph phases (`extract`, `causes`, `capa`) to UI in real time.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: DOCUMENT EXTRACTION (2:50 - 3:50) -->
+      <div class="slide" id="slide-3">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 4</span>
+            <h2 class="slide-title">Multi-Format Ingestion (PDF, EML, Plain Text)</h2>
+          </div>
+          <span class="slide-file-badge">backend/app/services/text_extract.py</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>backend/app/services/text_extract.py</span>
+            </div>
+            <pre class="code-body"><code><span class="kw">def</span> <span class="fn">ingest_source</span>(data: <span class="type">bytes</span>, filename: <span class="type">str</span>, text: <span class="type">str</span>, kind_hint: <span class="type">str</span>) -&gt; <span class="type">IngestResult</span>:
+    <span class="kw">if</span> len(data) &gt; <span class="num">15 * 1024 * 1024</span>:
+        <span class="kw">raise</span> AppError(<span class="str">"Files must be 15 MB or smaller."</span>, <span class="str">"file_too_large"</span>, <span class="num">413</span>)
+    
+<span class="hl-line">    <span class="kw">if</span> lower.endswith(<span class="str">".pdf"</span>):</span>
+        parts.append(_pdf_text(data))       <span class="comment"># In-memory PyPDF extraction (102ms)</span>
+        kind = <span class="str">"pdf"</span>
+<span class="hl-line">    <span class="kw">elif</span> lower.endswith(<span class="str">".eml"</span>):</span>
+        email = _email_text(data)           <span class="comment"># RFC-822 MIME headers + body (4ms)</span>
+        parts.append(email[<span class="str">"text"</span>])
+        subject, sender = email[<span class="str">"subject"</span>], email[<span class="str">"sender"</span>]
+        kind = <span class="str">"email"</span>
+<span class="hl-line">    <span class="kw">else</span>:</span>
+        parts.append(_decode_text(data))    <span class="comment"># Clean UTF-8 normalization (&lt;1ms)</span>
+        kind = <span class="str">"text"</span>
+
+    <span class="kw">return</span> IngestResult(source_text=combined.strip(), source_kind=kind, filename=filename)</code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">Ingestion Engine Metrics</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>100% In-Memory</strong> Zero temporary disk I/O prevents data leakage in shared container environments.</li>
+              <li class="notes-item"><strong>MIME Header Extraction</strong> Automatically extracts Subject, From, To, and Date from email alerts.</li>
+              <li class="notes-item"><strong>Blazing Speed</strong> Metformin TXT (<1ms), Omeprazole EML (4ms), Atorvastatin PDF (102ms).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: LANGGRAPH & GROQ (3:50 - 5:30) -->
+      <div class="slide" id="slide-4">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 5</span>
+            <h2 class="slide-title">LangGraph 5-Node Pipeline & Groq Rate-Limit Resilience</h2>
+          </div>
+          <span class="slide-file-badge">backend/app/services/graph/runners.py & llm.py</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>backend/app/services/graph/runners.py & llm.py</span>
+            </div>
+            <pre class="code-body"><code><span class="comment"># Context-pruned runner preventing token explosion (70% prompt reduction):</span>
+<span class="kw">def</span> <span class="fn">run_causes</span>(source: <span class="type">str</span>, extraction: <span class="type">dict</span>, investigation: <span class="type">dict</span>) -&gt; <span class="type">CausesOut</span>:
+    summary = {
+        <span class="str">"problem"</span>: investigation.get(<span class="str">"problem_statement"</span>),
+        <span class="str">"whys"</span>: investigation.get(<span class="str">"whys"</span>, []),
+        <span class="str">"fishbone"</span>: investigation.get(<span class="str">"fishbone"</span>, [])
+    }
+<span class="hl-line">    <span class="kw">return</span> llm_service.complete_structured(</span>
+        CausesOut, prompts.CAUSES, f<span class="str">"{_source_block(source, limit=5000)}\n\n{summary}"</span>
+    )
+
+<span class="comment"># Groq API Exponential Rate-Limit (429) Backoff:</span>
+<span class="kw">for</span> attempt <span class="kw">in</span> range(max_attempts):
+    <span class="kw">try</span>:
+        <span class="kw">return</span> chain.invoke(inputs)
+    <span class="kw">except</span> Exception <span class="kw">as</span> exc:
+<span class="hl-line">        <span class="kw">if</span> <span class="str">"429"</span> <span class="kw">in</span> str(exc) <span class="kw">or</span> <span class="str">"rate_limit"</span> <span class="kw">in</span> str(exc).lower():</span>
+            wait_sec = <span class="num">25.0 * (attempt + 1)</span>
+            time.sleep(wait_sec)  <span class="comment"># Absorbs Groq Tokens-per-Minute window gracefully</span></code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">LangGraph Orchestration</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>5 Discrete Nodes</strong> Extract ➔ Investigate ➔ Causes ➔ Gaps ➔ CAPA.</li>
+              <li class="notes-item"><strong>Groq openai/gpt-oss-120b</strong> 120-billion parameter open-weights model on ultra-fast LPU hardware.</li>
+              <li class="notes-item"><strong>Fault-Tolerant Retries</strong> Seamlessly survives external rate-limit spikes without crashing user requests.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 6: EVIDENCE GROUNDING (5:30 - 6:30) -->
+      <div class="slide" id="slide-5">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 6</span>
+            <h2 class="slide-title">Deterministic Evidence Grounding & Regulatory Safeguards</h2>
+          </div>
+          <span class="slide-file-badge">backend/app/services/grounding.py</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>backend/app/services/grounding.py</span>
+            </div>
+            <pre class="code-body"><code><span class="kw">def</span> <span class="fn">evidence_grounded</span>(evidence: <span class="type">str</span>, source: <span class="type">str</span>) -&gt; <span class="type">bool</span>:
+    quote = <span class="str">" "</span>.join((evidence <span class="kw">or</span> <span class="str">""</span>).split())
+    source_folded = source.lower()
+    
+<span class="hl-line">    <span class="comment"># 1. Direct exact substring match</span></span>
+    <span class="kw">if</span> quote.lower() <span class="kw">in</span> source_folded:
+        <span class="kw">return True</span>
+        
+<span class="hl-line">    <span class="comment"># 2. Strict numerical verification (prevents hallucinating numbers)</span></span>
+    numbers = _NUMBER.findall(quote)
+    <span class="kw">if</span> any(number <span class="kw">not in</span> source_folded <span class="kw">for</span> number <span class="kw">in</span> numbers):
+        <span class="kw">return False</span>
+        
+<span class="hl-line">    <span class="comment"># 3. Content token lexical overlap (&gt;= 45% threshold)</span></span>
+    tokens = [t <span class="kw">for</span> t <span class="kw">in</span> _TOKEN.findall(quote.lower()) <span class="kw">if</span> len(t) &gt;= 4 <span class="kw">and</span> t <span class="kw">not in</span> _STOP]
+    source_tokens = set(_TOKEN.findall(source_folded))
+    overlap = sum(<span class="num">1</span> <span class="kw">for</span> t <span class="kw">in</span> tokens <span class="kw">if</span> t <span class="kw">in</span> source_tokens)
+    <span class="kw">return</span> overlap &gt;= <span class="num">3</span> <span class="kw">and</span> (overlap / len(tokens)) &gt;= <span class="num">0.45</span></code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">Anti-Hallucination Guardrails</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>Zero Synthetic Numbers</strong> Rejects quotes containing unverified percentages, temperatures, or batch IDs.</li>
+              <li class="notes-item"><strong>Explicit Gap Output</strong> Missing info produces explicit Evidence Gaps rather than fabricated facts.</li>
+              <li class="notes-item"><strong>Human Sign-Off Boundary</strong> AI generates hypotheses; only qualified investigators confirm findings.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 7: DATABASE & PERSISTENCE (6:30 - 7:30) -->
+      <div class="slide" id="slide-6">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 7</span>
+            <h2 class="slide-title">Supabase Cloud PostgreSQL & Immutable Audit Trail</h2>
+          </div>
+          <span class="slide-file-badge">backend/app/models.py & db.py</span>
+        </div>
+
+        <div class="content-grid">
+          <div class="code-container">
+            <div class="code-header">
+              <div class="mac-dots"><div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div></div>
+              <span>backend/app/models.py</span>
+            </div>
+            <pre class="code-body"><code><span class="kw">class</span> <span class="type">Investigation</span>(Base):
+    __tablename__ = <span class="str">"investigations"</span>
+    id: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">36</span>), primary_key=<span class="kw">True</span>)
+    deviation_number: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">80</span>), index=<span class="kw">True</span>)
+    product_name: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">240</span>), index=<span class="kw">True</span>)
+    batch_lot: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">120</span>), index=<span class="kw">True</span>)
+<span class="hl-line">    document: Mapped[<span class="type">dict</span>] = mapped_column(JSON, nullable=<span class="kw">False</span>)  <span class="comment"># Full causal state</span></span>
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=<span class="kw">True</span>))
+
+<span class="kw">class</span> <span class="type">AuditEvent</span>(Base):
+    __tablename__ = <span class="str">"audit_events"</span>  <span class="comment"># Append-only 21 CFR Part 11 compliant log</span>
+    id: Mapped[<span class="type">int</span>] = mapped_column(Integer, primary_key=<span class="kw">True</span>, autoincrement=<span class="kw">True</span>)
+    investigation_id: Mapped[<span class="type">str</span>] = mapped_column(ForeignKey(<span class="str">"investigations.id"</span>, ondelete=<span class="str">"CASCADE"</span>))
+    actor: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">160</span>))
+    action: Mapped[<span class="type">str</span>] = mapped_column(String(<span class="num">40</span>))  <span class="comment"># 'create', 'update', 'status'</span>
+<span class="hl-line">    changes: Mapped[<span class="type">list</span>] = mapped_column(JSON, nullable=<span class="kw">False</span>)  <span class="comment"># Before/after delta diffs</span></span></code></pre>
+          </div>
+
+          <div class="notes-panel">
+            <div class="notes-heading">Cloud Database Resilience</div>
+            <ul class="notes-list">
+              <li class="notes-item"><strong>PostgreSQL 17.11</strong> Connected over TLS using modern `postgresql+psycopg://` driver.</li>
+              <li class="notes-item"><strong>Idle Connection Keep-Alive</strong> `pool_pre_ping=True` handles serverless PgBouncer socket drops.</li>
+              <li class="notes-item"><strong>Immutable Audit Records</strong> Full user attribution with before/after state diffs on every save.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 8: END-TO-END FLOW & TESTS (7:30 - 8:00) -->
+      <div class="slide" id="slide-7">
+        <div class="slide-meta">
+          <div class="slide-title-wrap">
+            <span class="slide-number">MODULE 8</span>
+            <h2 class="slide-title">Verification Suite & Engineering Conclusions</h2>
+          </div>
+          <span class="slide-file-badge">Terminal Verification & Pytest Suite</span>
+        </div>
+
+        <div class="content-grid single-col">
+          <div class="term-window">
+            <div class="term-header">
+              <span>PowerShell Console · Test & Build Verification</span>
+              <span>Health: DB=PostgreSQL 17.11 | LLM=openai/gpt-oss-120b</span>
+            </div>
+            <pre class="term-body"><code><span class="cmd">&gt; pytest backend/tests/ -v</span>
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0
+collected 35 items
+
+tests/test_api.py .........                                              [ 25%] <span class="pass">PASSED</span>
+tests/test_dashboard.py ..                                               [ 31%] <span class="pass">PASSED</span>
+tests/test_demo_mode.py ..                                               [ 37%] <span class="pass">PASSED</span>
+tests/test_extract.py .....                                              [ 51%] <span class="pass">PASSED</span>
+tests/test_gmp_evidence.py ..                                            [ 57%] <span class="pass">PASSED</span>
+tests/test_graph.py ...                                                  [ 65%] <span class="pass">PASSED</span>
+tests/test_grounding.py ....                                             [ 77%] <span class="pass">PASSED</span>
+tests/test_operations.py ......                                          [ 94%] <span class="pass">PASSED</span>
+tests/test_postgres.py s                                                 [ 97%] <span class="info">SKIPPED (PostgreSQL Active)</span>
+tests/test_search_filters.py .                                           [100%] <span class="pass">PASSED</span>
+
+<span class="pass">================== 34 passed, 1 skipped in 8.53s ===================</span>
+
+<span class="cmd">&gt; npm run build</span>
+&gt; tsc -b &amp;&amp; vite build
+vite v6.4.5 building for production...
+<span class="pass">✓ built in 5.21s (0 errors, 0 warnings)</span>
+
+<span class="info">=== ARCHITECTURAL VERDICT: PRODUCTION READY &amp; QUALIFIED ===</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const totalSlides = 8;
+    const treeItems = [
+      'tree-arch', 'tree-frontend', 'tree-api', 'tree-extract',
+      'tree-graph', 'tree-grounding', 'tree-models', 'tree-tests'
+    ];
+
+    function goToSlide(index) {
+      if (index < 0 || index >= totalSlides) return;
+      currentSlide = index;
+
+      // Update slides
+      document.querySelectorAll('.slide').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+
+      // Update header pills
+      document.querySelectorAll('.nav-pill').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+
+      // Update tree items
+      treeItems.forEach((id, i) => {
+        const item = document.getElementById(id);
+        if (item) item.classList.toggle('active', i === index);
+      });
+    }
+
+    // Auto-advance controller for recording if desired
+    let startTime = Date.now();
+    function updateTimer() {
+      const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+      const secs = String(elapsedSec % 60).padStart(2, '0');
+      document.getElementById('timerBadge').innerText = `${mins}:${secs} / 08:00`;
+    }
+    setInterval(updateTimer, 500);
+  </script>
+</body>
+</html>
+

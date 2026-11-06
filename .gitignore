@@ -23,3 +23,8 @@ playwright-report/
 .DS_Store
 uploads/
 *.log
+*.mp4
+*.webm
+scratch*/
+scratch_video1/
+scratch_video2/
